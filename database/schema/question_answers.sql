@@ -1,0 +1,7 @@
+CREATE TABLE question_answers(
+id SERIAL PRIMARY KEY,
+document_id UUID REFERENCES documents(id) ON DELETE CASCADE,
+questions TEXT NOT NULL,
+answer TEXT NOT NULL,
+created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
