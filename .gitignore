@@ -2,6 +2,5 @@
 .vscode/
 DocForge_Hub/
 .env
-.env
-
+backend/__pycache__/
 
