@@ -1,6 +1,11 @@
+#Python
 .venv/
-.vscode/
 DocForge_Hub/
 .env
 backend/__pycache__/
 
+# VS Code
+.vscode/
+
+
+*.log

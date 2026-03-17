@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from typing import List
+from uuid import UUID
 
 class CompanyContext(BaseModel):
     company_name: str
@@ -16,5 +17,5 @@ class AnswerItem(BaseModel):
     answer: str
 
 class SubmitAnswersRequest(BaseModel):
-    document_id: str
+    document_id: UUID
     answers: List[AnswerItem]

@@ -217,16 +217,165 @@ def submit_answers(data: SubmitAnswersRequest):
     for item in data.answers:
         cursor.execute(
             """
-            INSERT INTO question_answers (document_id, question, answer)
+            INSERT INTO question_answers (document_id, questions, answer)
             VALUES (%s,%s,%s)
             """,
             (
-                data.document_id,
+                str(data.document_id),
                 item.question,
                 item.answer
             )
         )
     conn.commit()
+    cursor.close()
+    conn.close()
+
+    return {"message":"Answers saved successfully"}
+
+
+# Generate Document
+@app.post("/generate_document")
+def generate_document(document_id: str):
+
+    conn = get_connection()
+    cursor=conn.cursor()
+
+    # Delete Old sections
+    cursor.execute(
+        "DELETE FROM document_sections WHERE document_id=%s",
+        (document_id,)
+    )
+    
+    # Get template id
+    cursor.execute(
+        " SELECT template_id, company_id FROM documents WHERE id=%s",
+        (document_id,)
+    )
+    doc = cursor.fetchone()
+
+    template_id = doc[0]
+    company_id = doc[1]
+
+    
+    # Get sections
+    cursor.execute(
+        """
+        SELECT section_title, section_order
+        FROM template_sections
+        WHERE template_id=%s
+        ORDER BY section_order
+        """,
+        (template_id,)
+    )
+    sections = cursor.fetchall()
+
+    # Get answers
+    cursor.execute(
+        """
+        SELECT questions,answer FROM question_answers
+        WHERE document_id=%s
+        """,
+        (document_id,)
+    )
+    answers = cursor.fetchall()
+
+    answers_text = "\n".join([f"{q}: {a}" for q,a in answers])
+
+    generated_sections = []
+
+    for section_title, section_order in sections:
+
+        prompt = f"""
+You are an Enterprise SaaS Documentation assistant.
+
+User Answers : 
+{answers_text}
+
+Generate Professional Content for this section:
+
+Section : {section_title}
+"""
+        response = llm.invoke(prompt)
+
+        content = response.content
+
+        cursor.execute(
+            """
+            INSERT INTO document_sections
+            (document_id, section_title, section_content, section_order)
+            VALUES (%s,%s,%s,%s)
+            """,
+            (document_id, section_title, content, section_order)
+        )
+
+        generated_sections.append(section_title)
+
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    return {
+        "message" : "Document is Generated",
+        "sections_created" : len(generated_sections)
+    }
+
+
+# Full Document
+
+@app.get("/document/{document_id}")
+def get_document(document_id: str):
+
+    conn=get_connection()
+    cursor=conn.cursor()
+
+
+    # Get Document Title
+
+    cursor.execute(
+        """
+        SELECT title
+        FROM documents
+        WHERE id=%s
+        """,
+        (document_id,)
+    )
+
+    doc=cursor.fetchone()
+
+    if not doc:
+        return {"Error": "Sorry, Document Not Found!"}
+    
+    title = doc[0]
+
+
+    # Get document sections
+
+    cursor.execute(
+        """
+        SELECT section_title, section_content, section_order
+        FROM document_sections
+        WHERE document_id = %s
+        ORDER BY section_order
+        """,
+        (document_id,)
+    )
+
+    rows=cursor.fetchall()
+
+    sections = []
+
+    for row in rows:
+        sections.append({
+            "section_title" : row[0],
+            "content" : row[1],
+            "order" : row[2]
+        })
 
     cursor.close()
     conn.close()
+
+    return {
+        "document_id" : document_id,
+        "title" : title,
+        "sections" : sections
+    }
