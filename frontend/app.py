@@ -348,3 +348,5 @@ if documents:
                 color:{status_color};">{status_text}</div>
             </div>
             """, unsafe_allow_html=True)
+
+
