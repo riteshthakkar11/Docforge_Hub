@@ -136,7 +136,6 @@ backend/app/__pycache__/
 
 # UV package manager 
 .uv/
-uv.lock
 
 # Jupyter 
 .ipynb_checkpoints
