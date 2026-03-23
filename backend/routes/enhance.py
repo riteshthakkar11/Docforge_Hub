@@ -5,14 +5,14 @@ from backend.llm import llm
 router = APIRouter()
 
 ACTION_MAP = {
-    "longer": "Make the content more detailed and comprehensive",
-    "shorter": "Make the content shorter and to the point",
-    "formal": "Make the tone more formal and professional",
-    "concise": "Make the content concise without losing meaning",
-    "examples": "Add relevant examples",
-    "table": "Add structured table if applicable",
-    "clarity": "Improve clarity and readability",
-    "grammar": "Fix grammar and improve sentence structure"
+    "Longer": "Make the content more detailed and comprehensive",
+    "Shorter": "Make the content shorter and to the point",
+    "Formal": "Make the tone more formal and professional",
+    "Concise": "Make the content concise without losing meaning",
+    "Examples": "Add relevant examples",
+    "Table": "Add structured table if applicable",
+    "Clarity": "Improve clarity and readability",
+    "Grammar": "Fix grammar and improve sentence structure"
 }
 
 
