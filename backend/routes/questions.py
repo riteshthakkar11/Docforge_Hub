@@ -76,13 +76,25 @@ Only return JSON. No explanations.
         cursor.execute(
             """
             SELECT section_order FROM template_sections
-            WHERE template_id=%s AND section_title=%s
+            WHERE template_id=%s AND Lower(section_title)=Lower(%s)
             """,
             (template_id, section_title)
         )
         result = cursor.fetchone()
+
+        if not result:
+            cursor.execute(
+                """
+                SELECT section_order FROM template_sections
+                WHERE template_id=%s AND LOWER(section_title) LIKE LOWER(%s)
+                """,
+                (template_id, f"%{section_title}%")
+            )
+            result = cursor.fetchone()
+
         if not result:
             continue
+        
         section_order = result[0]
 
         for i, q in enumerate(sec["questions"], start=1):
