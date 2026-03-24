@@ -200,3 +200,4 @@ def save_enhanced_section(data: dict):
     conn.close()
 
     return {"message": "Section updated successfully"}
+

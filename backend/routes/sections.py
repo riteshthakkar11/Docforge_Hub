@@ -154,3 +154,4 @@ def generate_section(data: GenerateSectionRequest):
     conn.close()
 
     return {"section": section_title, "content": content}
+
