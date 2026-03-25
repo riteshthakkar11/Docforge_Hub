@@ -8,8 +8,8 @@ load_dotenv()
 
 router = APIRouter()
 
-notion   = Client(auth=os.getenv("NOTION_TOKEN"))
-DB_ID    = os.getenv("NOTION_DB_ID")
+notion = Client(auth=os.getenv("NOTION_TOKEN"))
+DB_ID = os.getenv("NOTION_DB_ID")
 
 
 def chunk_blocks(blocks, size=100):
