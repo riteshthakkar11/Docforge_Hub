@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException
 from langchain_core.prompts import PromptTemplate
 from backend.database import get_connection
 from backend.llm import llm
+from backend.redis_client import check_rate_limit, is_duplicate, set_job_status, get_job_status
 
 router = APIRouter()
 
@@ -62,6 +63,26 @@ def extract_json(text: str) -> dict:
 
 @router.post("/generate_questions")
 def generate_questions(template_id: int):
+    
+    # ── Rate limiting — max 10 generations per minute ────
+    if not check_rate_limit(f"generate_questions", max_calls=10, window_seconds=60):
+        raise HTTPException(
+            status_code=429,
+            detail="Rate limit exceeded. Please wait before generating again."
+        )
+
+    # ── Deduplication — prevent double generation ────────
+    dedup_key = f"questions_{template_id}"
+    if is_duplicate(dedup_key, ttl=30):
+        raise HTTPException(
+            status_code=409,
+            detail="Questions are already being generated for this template."
+        )
+
+    # ── Job tracking ──────────────────────────────────────
+    job_id = f"questions_{template_id}"
+    set_job_status(job_id, "processing", {"template_id": template_id})
+
     conn   = get_connection()
     cursor = conn.cursor()
 
@@ -161,6 +182,11 @@ def generate_questions(template_id: int):
     cursor.close()
     conn.close()
 
+    set_job_status(job_id, "completed", {
+        "template_id":     template_id,
+        "total_questions": inserted
+    })
+
     return {
         "message":         "Questions generated and stored",
         "total_questions": inserted
@@ -207,3 +233,5 @@ def get_next_questions(document_id: str, section_order: int):
         "section":   section[0] if section else "",
         "questions": questions
     }
+
+

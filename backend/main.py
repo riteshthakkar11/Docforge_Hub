@@ -1,5 +1,7 @@
 from fastapi import FastAPI
 from dotenv import load_dotenv
+from backend.redis_client import redis_health,get_job_status
+
 
 load_dotenv()
 
@@ -31,3 +33,14 @@ app.include_router(notion.router,      tags=["Notion"])
 @app.get("/")
 def home():
     return {"message": "DocForge API Running"}
+
+@app.get("/health")
+def health_check():
+    return {
+        "api":   "running",
+        "redis": "connected" if redis_health() else "disconnected"
+    }
+
+@app.get("/job/{job_id}")
+def get_job(job_id: str):
+    return get_job_status(job_id)

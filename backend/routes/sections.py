@@ -4,6 +4,7 @@ from langchain_core.prompts import PromptTemplate
 from backend.database import get_connection
 from backend.models import GenerateSectionRequest
 from backend.llm import llm, get_memory, save_to_memory
+from backend.redis_client import ( set_job_status, check_rate_limit)
 
 router = APIRouter()
 
@@ -59,6 +60,22 @@ Generate the section content now:
 
 @router.post("/generate_section")
 def generate_section(data: GenerateSectionRequest):
+
+    # ── Rate limiting ─────────────────────────────────────
+    if not check_rate_limit(f"generate_section_{data.document_id}", max_calls=20, window_seconds=60):
+        raise HTTPException(
+            status_code=429,
+            detail="Rate limit exceeded. Please wait before generating again."
+        )
+
+    # ── Job tracking ──────────────────────────────────────
+    job_id = f"section_{data.document_id}_{data.section_order}"
+    set_job_status(job_id, "processing", {
+        "document_id":   data.document_id,
+        "section_order": data.section_order
+    })
+
+
     conn   = get_connection()
     cursor = conn.cursor()
 
@@ -133,5 +150,11 @@ def generate_section(data: GenerateSectionRequest):
     conn.commit()
     cursor.close()
     conn.close()
+
+    set_job_status(job_id, "completed", {
+        "document_id":   data.document_id,
+        "section_order": data.section_order,
+        "section_title": section_title
+    })
 
     return {"section": section_title, "content": content}
