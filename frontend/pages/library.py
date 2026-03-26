@@ -53,6 +53,7 @@ with st.sidebar:
     st.page_link("pages/generator.py", label="  Generator", icon="⚡")
     st.page_link("pages/library.py",   label="  Library",   icon="📚")
     st.page_link("pages/notion.py",    label="  Notion",    icon="🚀")
+    
     st.markdown("---")
     st.markdown("""<div style="font-size:10px;font-weight:600;color:#3a3a5c;
     letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">
