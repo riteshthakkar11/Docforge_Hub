@@ -33,5 +33,14 @@ FROM document_sections
 WHERE document_id = '0728d04c-2901-412d-a729-6cd1dc43e133'
 ORDER BY section_title;
 
+UPDATE document_sections
+SET section_content = REGEXP_REPLACE(
+    REGEXP_REPLACE(
+        REGEXP_REPLACE(section_content, '\*{1,3}([^*]+)\*{1,3}', '\1', 'g'),
+        '#{1,6}\s*', '', 'g'
+    ),
+    '_{1,3}([^_]+)_{1,3}', '\1', 'g'
+);
+
 
 

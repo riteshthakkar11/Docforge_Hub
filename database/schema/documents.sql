@@ -47,3 +47,7 @@ JOIN document_templates dt ON d.template_id = dt.id
 JOIN document_types dty ON dt.document_type_id = dty.id
 JOIN departments dep ON dt.department_id = dep.id
 WHERE d.id = '5470c216-550b-405b-ae0c-f779d0dc2e0b';
+
+ALTER TABLE documents
+ADD COLUMN quality_score INT DEFAULT NULL,
+ADD COLUMN score_breakdown JSONB DEFAULT NULL;
