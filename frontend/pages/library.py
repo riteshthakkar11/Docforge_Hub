@@ -1,9 +1,11 @@
 import streamlit as st
 import sys, os, requests
-import numpy
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from utils.api import get_all_documents, get_departments, push_to_notion, get_pdf_url, get_docx_url
+from utils.api import (
+    get_all_documents, get_departments,
+    push_to_notion, get_pdf_url, get_docx_url
+)
 
 st.set_page_config(page_title="Library · DocForge", page_icon="📚", layout="wide")
 
@@ -51,19 +53,16 @@ with st.sidebar:
     st.page_link("pages/generator.py", label="  Generator", icon="⚡")
     st.page_link("pages/library.py",   label="  Library",   icon="📚")
     st.page_link("pages/notion.py",    label="  Notion",    icon="🚀")
-
     st.markdown("---")
     st.markdown("""<div style="font-size:10px;font-weight:600;color:#3a3a5c;
     letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">
     Filter by department</div>""", unsafe_allow_html=True)
-
     departments  = get_departments()
     dept_options = {"All departments": None}
     for d in departments:
         dept_options[d[1]] = d[0]
     selected_dept = st.radio("", list(dept_options.keys()), label_visibility="collapsed")
 
-# Page header 
 st.markdown("""
 <div style="padding:24px 0 8px;">
     <div style="font-size:24px;font-weight:600;color:#e0e0f0;margin-bottom:4px;">
@@ -73,19 +72,21 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Fetch 
 dept_id   = dept_options[selected_dept]
 data      = get_all_documents(dept_id)
 documents = data.get("documents", [])
 
-# Search + type filter 
 col1, col2, col3 = st.columns([3, 1, 1])
 with col1:
     search = st.text_input("", placeholder="Search documents...", label_visibility="collapsed")
 with col2:
-    type_filter = st.selectbox("", ["All types", "Policy", "SOP", "Documentation", "Plan", "Report"], label_visibility="collapsed")
+    type_filter = st.selectbox("", [
+        "All types", "Policy", "SOP", "Documentation", "Plan", "Report"
+    ], label_visibility="collapsed")
 with col3:
-    status_filter = st.selectbox("", ["All status", "Published", "Draft"], label_visibility="collapsed")
+    status_filter = st.selectbox("", [
+        "All status", "Published", "Draft"
+    ], label_visibility="collapsed")
 
 if search:
     documents = [d for d in documents if search.lower() in d["title"].lower()]
@@ -96,18 +97,16 @@ if status_filter == "Published":
 elif status_filter == "Draft":
     documents = [d for d in documents if not d["is_published"]]
 
-# Metrics 
 st.markdown("---")
 total     = len(documents)
 published = len([d for d in documents if d["is_published"]])
-m1,m2,m3,m4 = st.columns(4)
-m1.metric("Total", total)
-m2.metric("Published", published)
-m3.metric("Drafts", total - published)
+m1, m2, m3, m4 = st.columns(4)
+m1.metric("Total",       total)
+m2.metric("Published",   published)
+m3.metric("Drafts",      total - published)
 m4.metric("Departments", len(set(d["department"] for d in documents)) if documents else 0)
 st.markdown("---")
 
-# Document grid
 if not documents:
     st.markdown("""
     <div style="background:#222;border:1px solid #1e1e2e;border-radius:12px;
@@ -128,17 +127,39 @@ else:
             status_bg    = "rgba(29,158,117,0.12)" if is_pub else "rgba(186,117,23,0.12)"
             status_text  = "Published" if is_pub else "Draft"
 
+            # ── Quality score badge ───────────────────────
+            qs         = doc.get("quality_score")
+            score_html = ""
+            if qs is not None:
+                if qs >= 80:
+                    sc = "#22c97a"
+                    sb = "rgba(34,201,122,0.12)"
+                elif qs >= 60:
+                    sc = "#f5a623"
+                    sb = "rgba(245,166,35,0.12)"
+                else:
+                    sc = "#e24b4a"
+                    sb = "rgba(226,75,74,0.12)"
+                score_html = f"""
+                <span style="font-size:11px;font-weight:600;padding:3px 8px;
+                border-radius:20px;background:{sb};color:{sc};
+                margin-left:6px;">★ {qs}/100</span>
+                """
+
             st.markdown(f"""
             <div style="background:#222;border:1px solid #1e1e2e;
             border-radius:12px;padding:16px 20px;margin-bottom:4px;">
                 <div style="display:flex;justify-content:space-between;
                 align-items:flex-start;margin-bottom:10px;">
                     <div style="width:36px;height:36px;border-radius:8px;
-                    background:#222;display:flex;align-items:center;
+                    background:#2a2a2a;display:flex;align-items:center;
                     justify-content:center;font-size:16px;">📄</div>
-                    <div style="font-size:11px;font-weight:500;padding:3px 10px;
-                    border-radius:20px;background:{status_bg};color:{status_color};">
-                    {status_text}</div>
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <div style="font-size:11px;font-weight:500;padding:3px 10px;
+                        border-radius:20px;background:{status_bg};color:{status_color};">
+                        {status_text}</div>
+                        {score_html}
+                    </div>
                 </div>
                 <div style="font-size:14px;font-weight:600;color:#e0e0f0;
                 margin-bottom:4px;">{doc['title']}</div>
@@ -146,13 +167,13 @@ else:
                 {doc['department']} · {doc['document_type']} · {doc.get('company_name','')} · {doc['created_at'][:10]}</div>
                 <div style="display:flex;gap:6px;margin-bottom:12px;">
                     <span style="font-size:10px;padding:2px 8px;border-radius:20px;
-                    background:#222;border:1px solid #2a2a3e;color:#8080a0;">
+                    background:#2a2a2a;border:1px solid #2a2a3e;color:#8080a0;">
                     {doc['department']}</span>
                     <span style="font-size:10px;padding:2px 8px;border-radius:20px;
-                    background:#222;border:1px solid #2a2a3e;color:#8080a0;">
+                    background:#2a2a2a;border:1px solid #2a2a3e;color:#8080a0;">
                     {doc['document_type']}</span>
                     <span style="font-size:10px;padding:2px 8px;border-radius:20px;
-                    background:#222;border:1px solid #2a2a3e;color:#8080a0;">
+                    background:#2a2a2a;border:1px solid #2a2a3e;color:#8080a0;">
                     {doc.get('version','v1.0')}</span>
                 </div>
             </div>
@@ -162,24 +183,35 @@ else:
             with c1:
                 try:
                     pdf = requests.get(get_pdf_url(doc["id"])).content
-                    st.download_button("PDF", data=pdf,
+                    st.download_button(
+                        "PDF", data=pdf,
                         file_name=f"{doc['title']}.pdf",
                         mime="application/pdf",
-                        key=f"pdf_{doc['id']}", use_container_width=True)
+                        key=f"pdf_{doc['id']}",
+                        use_container_width=True
+                    )
                 except:
                     pass
             with c2:
                 try:
                     docx = requests.get(get_docx_url(doc["id"])).content
-                    st.download_button("DOCX", data=docx,
+                    st.download_button(
+                        "DOCX", data=docx,
                         file_name=f"{doc['title']}.docx",
                         mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                        key=f"docx_{doc['id']}", use_container_width=True)
+                        key=f"docx_{doc['id']}",
+                        use_container_width=True
+                    )
                 except:
                     pass
             with c3:
                 if not is_pub:
-                    if st.button("Publish", key=f"pub_{doc['id']}", use_container_width=True, type="primary"):
+                    if st.button(
+                        "Publish",
+                        key=f"pub_{doc['id']}",
+                        use_container_width=True,
+                        type="primary"
+                    ):
                         with st.spinner("Publishing..."):
                             r = push_to_notion(doc["id"])
                         if r.get("notion_page_id"):
@@ -189,7 +221,9 @@ else:
                             st.error("Failed!")
                 else:
                     nid = doc["notion_page_id"].replace("-", "")
-                    st.link_button("Notion →", f"https://notion.so/{nid}", use_container_width=True)
-
+                    st.link_button(
+                        "Notion →",
+                        f"https://notion.so/{nid}",
+                        use_container_width=True
+                    )
             st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
-

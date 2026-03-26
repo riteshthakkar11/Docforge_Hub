@@ -111,6 +111,15 @@ def get_pdf_url(document_id: str):
 def get_docx_url(document_id: str):
     return f"{BASE_URL}/download/docx/{document_id}"
 
+# Score
+def score_document(document_id: str):
+    res = requests.post(f"{BASE_URL}/score_document/{document_id}")
+    return res.json()
+
+def get_score(document_id: str):
+    res = requests.get(f"{BASE_URL}/score_document/{document_id}")
+    return res.json()
+
 
 # Notion 
 def push_to_notion(document_id: str):
