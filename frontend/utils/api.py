@@ -2,25 +2,26 @@ import requests
 
 BASE_URL = "http://localhost:8000"
 
-# Departments
+
+# ── Departments ───────────────────────────────────────────
 def get_departments():
     res = requests.get(f"{BASE_URL}/departments")
     return res.json().get("departments", [])
 
 
-# Templates
+# ── Templates ─────────────────────────────────────────────
 def get_templates(department_id: int):
     res = requests.get(f"{BASE_URL}/templates/{department_id}")
     return res.json().get("templates", [])
 
 
-# Sections
+# ── Sections ──────────────────────────────────────────────
 def get_sections(template_id: int):
     res = requests.get(f"{BASE_URL}/sections/{template_id}")
     return res.json().get("sections", [])
 
 
-# Company Context 
+# ── Company Context ───────────────────────────────────────
 def save_company_context(data: dict):
     res = requests.post(f"{BASE_URL}/company-context", json=data)
     return res.json()
@@ -30,7 +31,7 @@ def get_company_context(company_id: int):
     return res.json()
 
 
-# Document 
+# ── Document ──────────────────────────────────────────────
 def create_document(template_id: int, company_id: int):
     res = requests.post(
         f"{BASE_URL}/create-document",
@@ -50,7 +51,7 @@ def get_all_documents(department_id: int = None):
     return res.json()
 
 
-# Questions 
+# ── Questions ─────────────────────────────────────────────
 def generate_questions(template_id: int):
     res = requests.post(
         f"{BASE_URL}/generate_questions",
@@ -66,29 +67,29 @@ def get_next_questions(document_id: str, section_order: int):
     return res.json()
 
 
-# Generate Section 
+# ── Generate Section ──────────────────────────────────────
 def generate_section(document_id: str, section_order: int, answers: list):
     payload = {
-        "document_id": document_id,
+        "document_id":   document_id,
         "section_order": section_order,
-        "answers": answers
+        "answers":       answers
     }
     res = requests.post(f"{BASE_URL}/generate_section", json=payload)
     return res.json()
 
 
-# Progress
+# ── Progress ──────────────────────────────────────────────
 def get_progress(document_id: str):
     res = requests.get(f"{BASE_URL}/progress/{document_id}")
     return res.json()
 
 
-# Enhance
+# ── Enhance ───────────────────────────────────────────────
 def enhance_section(document_id: str, section_order: int, action: str, custom_instruction: str = ""):
     payload = {
-        "document_id": document_id,
-        "section_order": section_order,
-        "action": action,
+        "document_id":        document_id,
+        "section_order":      section_order,
+        "action":             action,
         "custom_instruction": custom_instruction
     }
     res = requests.post(f"{BASE_URL}/enhance_section", json=payload)
@@ -96,22 +97,23 @@ def enhance_section(document_id: str, section_order: int, action: str, custom_in
 
 def save_enhanced_section(document_id: str, section_order: int, content: str):
     payload = {
-        "document_id": document_id,
+        "document_id":   document_id,
         "section_order": section_order,
-        "content": content
+        "content":       content
     }
     res = requests.post(f"{BASE_URL}/save_enhanced_section", json=payload)
     return res.json()
 
 
-# Download 
+# ── Download ──────────────────────────────────────────────
 def get_pdf_url(document_id: str):
     return f"{BASE_URL}/download/pdf/{document_id}"
 
 def get_docx_url(document_id: str):
     return f"{BASE_URL}/download/docx/{document_id}"
 
-# Score
+
+# ── Score ─────────────────────────────────────────────────
 def score_document(document_id: str):
     res = requests.post(f"{BASE_URL}/score_document/{document_id}")
     return res.json()
@@ -121,6 +123,7 @@ def get_score(document_id: str):
     return res.json()
 
 
+# ── Suggestions ───────────────────────────────────────────
 def suggest_templates(user_input: str):
     res = requests.post(
         f"{BASE_URL}/suggest_templates",
@@ -129,12 +132,24 @@ def suggest_templates(user_input: str):
     return res.json()
 
 
-# Notion 
+# ── Chat ──────────────────────────────────────────────────
+def chat_with_document(document_id: str, question: str, chat_history: list):
+    res = requests.post(
+        f"{BASE_URL}/chat_document",
+        json={
+            "document_id":  document_id,
+            "question":     question,
+            "chat_history": chat_history
+        },
+        timeout=60
+    )
+    return res.json()
+
+
+# ── Notion ────────────────────────────────────────────────
 def push_to_notion(document_id: str):
     res = requests.post(
         f"{BASE_URL}/push_to_notion",
         params={"document_id": document_id}
     )
     return res.json()
-
-
