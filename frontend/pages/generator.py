@@ -11,7 +11,7 @@ from utils.api import (
     generate_section, get_progress,
     enhance_section, save_enhanced_section,
     get_pdf_url, get_docx_url, push_to_notion, get_document,
-    score_document, get_score
+    score_document, get_score, chat_with_document
 )
 
 st.set_page_config(
@@ -98,7 +98,8 @@ defaults = {
     "current_section": 1, "total_sections": 0,
     "generated_content": None, "section_name": "",
     "edit_mode": False, "show_enhance": False,
-    "saved_answers": {}, "saved_generated": {}
+    "saved_answers": {}, "saved_generated": {},
+    "chat_history": []
 }
 for k, v in defaults.items():
     if k not in st.session_state:
@@ -155,42 +156,28 @@ if st.session_state.step == 1:
 
     col1, col2 = st.columns(2)
     with col1:
-        departments = get_departments()
-        dept_map    = {d[1]: d[0] for d in departments}
-
-        # ── Pre-select from suggestions ───────────────────
+        departments  = get_departments()
+        dept_map     = {d[1]: d[0] for d in departments}
         preselect_dept = st.session_state.get("preselect_dept_id", None)
         default_dept   = 0
         if preselect_dept:
             dept_ids = list(dept_map.values())
             if preselect_dept in dept_ids:
                 default_dept = dept_ids.index(preselect_dept)
-
-        dept_name = st.selectbox(
-            "Department",
-            list(dept_map.keys()),
-            index=default_dept
-        )
-        dept_id = dept_map[dept_name]
+        dept_name = st.selectbox("Department", list(dept_map.keys()), index=default_dept)
+        dept_id   = dept_map[dept_name]
 
     with col2:
-        templates = get_templates(dept_id)
-        tmpl_map  = {t[1]: t[0] for t in templates}
-
-        # ── Pre-select template from suggestions ──────────
+        templates      = get_templates(dept_id)
+        tmpl_map       = {t[1]: t[0] for t in templates}
         preselect_tmpl = st.session_state.get("preselect_template_id", None)
         default_tmpl   = 0
         if preselect_tmpl:
             tmpl_ids = list(tmpl_map.values())
             if preselect_tmpl in tmpl_ids:
                 default_tmpl = tmpl_ids.index(preselect_tmpl)
-
-        tmpl_name = st.selectbox(
-            "Template",
-            list(tmpl_map.keys()),
-            index=default_tmpl
-        )
-        tmpl_id = tmpl_map[tmpl_name]
+        tmpl_name = st.selectbox("Template", list(tmpl_map.keys()), index=default_tmpl)
+        tmpl_id   = tmpl_map[tmpl_name]
 
     sections = get_sections(tmpl_id)
 
@@ -216,7 +203,6 @@ if st.session_state.step == 1:
             st.session_state.template_id    = tmpl_id
             st.session_state.total_sections = len(sections)
             st.session_state.step           = 2
-            # ── Clear preselect after use ─────────────────
             st.session_state.pop("preselect_dept_id", None)
             st.session_state.pop("preselect_template_id", None)
             st.rerun()
@@ -378,9 +364,9 @@ elif st.session_state.step == 3:
             with st.spinner(f"Generating {section_name}..."):
                 result  = generate_section(document_id, current_section, answers)
                 content = result.get("content", "")
-                st.session_state.generated_content              = content
-                st.session_state.section_name                   = section_name
-                st.session_state.saved_generated[current_section] = content
+                st.session_state.generated_content                 = content
+                st.session_state.section_name                      = section_name
+                st.session_state.saved_generated[current_section]  = content
             st.rerun()
 
     if not st.session_state.generated_content:
@@ -420,9 +406,9 @@ elif st.session_state.step == 3:
                     use_container_width=True
                 ):
                     save_enhanced_section(document_id, current_section, edited)
-                    st.session_state.generated_content              = edited
-                    st.session_state.saved_generated[current_section] = edited
-                    st.session_state.edit_mode                      = False
+                    st.session_state.generated_content                 = edited
+                    st.session_state.saved_generated[current_section]  = edited
+                    st.session_state.edit_mode                         = False
                     st.success("Section saved!")
                     st.rerun()
             with col_cancel:
@@ -526,9 +512,9 @@ elif st.session_state.step == 3:
                             ec = enhanced.get("enhanced_content", "")
                         if ec:
                             save_enhanced_section(document_id, current_section, ec)
-                            st.session_state.generated_content              = ec
-                            st.session_state.saved_generated[current_section] = ec
-                            st.session_state.show_enhance                   = False
+                            st.session_state.generated_content                 = ec
+                            st.session_state.saved_generated[current_section]  = ec
+                            st.session_state.show_enhance                      = False
                             st.success("Enhanced and saved!")
                             st.rerun()
 
@@ -565,7 +551,6 @@ elif st.session_state.step == 4:
 
     # ── Quality Score ─────────────────────────────────────
     existing_score = get_score(document_id)
-
     if existing_score.get("overall_score") is None:
         with st.spinner("Analyzing document quality..."):
             score_data = score_document(document_id)
@@ -644,7 +629,6 @@ elif st.session_state.step == 4:
 
         st.markdown("</div>", unsafe_allow_html=True)
 
-        # Rescore button
         if st.button("🔄 Rescore document", use_container_width=False):
             with st.spinner("Rescoring..."):
                 score_data = score_document(document_id)
@@ -706,6 +690,121 @@ elif st.session_state.step == 4:
             {sec['content'].replace(chr(10),'<br>')}
             </div>
             """, unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # ════════════════════════════════════════════════════
+    # DOCUMENT CHAT
+    # ════════════════════════════════════════════════════
+    st.markdown("""
+    <div style="font-size:15px;font-weight:600;color:#e0e0f0;margin-bottom:4px;">
+    💬 Ask AI about this document</div>
+    <div style="font-size:13px;color:#666;margin-bottom:16px;">
+    Ask questions, request summaries or find gaps in this document.</div>
+    """, unsafe_allow_html=True)
+
+    # Quick suggestion buttons
+    st.markdown("""
+    <div style="font-size:11px;color:#666;margin-bottom:8px;">Quick questions:</div>
+    """, unsafe_allow_html=True)
+
+    quick_cols = st.columns(4)
+    quick_questions = [
+        "Summarize this document",
+        "What is missing?",
+        "List all key points",
+        "What are the risks?"
+    ]
+    for qi, qcol in enumerate(quick_cols):
+        with qcol:
+            if st.button(
+                quick_questions[qi],
+                key=f"quick_{qi}",
+                use_container_width=True
+            ):
+                # Directly add to history and call API
+                question = quick_questions[qi]
+                st.session_state.chat_history.append({
+                    "role":    "user",
+                    "content": question
+                })
+                with st.spinner("Thinking..."):
+                    result = chat_with_document(
+                        document_id,
+                        question,
+                        st.session_state.chat_history[:-1]
+                    )
+                    answer = result.get("answer", "Sorry, I could not answer that.")
+                st.session_state.chat_history.append({
+                    "role":    "assistant",
+                    "content": answer
+                })
+                st.rerun()
+
+    # Display chat history
+    if st.session_state.chat_history:
+        for msg in st.session_state.chat_history:
+            if msg["role"] == "user":
+                st.markdown(f"""
+                <div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
+                    <div style="background:#7F77DD;border-radius:12px 12px 0 12px;
+                    padding:10px 14px;max-width:75%;font-size:13px;color:#fff;
+                    line-height:1.5;">{msg['content']}</div>
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.markdown(f"""
+                <div style="display:flex;justify-content:flex-start;margin-bottom:8px;">
+                    <div style="background:#222;border:1px solid #2a2a3e;
+                    border-radius:12px 12px 12px 0;padding:10px 14px;
+                    max-width:80%;font-size:13px;color:#a0a0b8;
+                    line-height:1.6;">{msg['content'].replace(chr(10), '<br>')}</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+    # Chat input
+    prefill = st.session_state.pop("chat_input_prefill", "")
+    col_chat, col_send = st.columns([5, 1])
+    with col_chat:
+        chat_input = st.text_input(
+            "",
+            value=prefill,
+            placeholder="Ask anything about this document...",
+            label_visibility="collapsed",
+            key="chat_input_box"
+        )
+    with col_send:
+        send_btn = st.button("Send →", type="primary", use_container_width=True)
+
+    if send_btn and chat_input.strip():
+        question = chat_input.strip()
+
+        # Add user message to history
+        st.session_state.chat_history.append({
+            "role":    "user",
+            "content": question
+        })
+
+        with st.spinner("Thinking..."):
+            result = chat_with_document(
+                document_id,
+                question,
+                st.session_state.chat_history[:-1]
+            )
+            answer = result.get("answer", "Sorry, I could not answer that.")
+
+        # Add assistant message to history
+        st.session_state.chat_history.append({
+            "role":    "assistant",
+            "content": answer
+        })
+        st.rerun()
+
+    # Clear chat button
+    if st.session_state.chat_history:
+        if st.button("🗑️ Clear chat", use_container_width=False):
+            st.session_state.chat_history = []
+            st.rerun()
 
     st.markdown("---")
     if st.button("Generate another document", use_container_width=True):
