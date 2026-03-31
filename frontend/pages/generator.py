@@ -80,7 +80,7 @@ with st.sidebar:
     if "document_id" in st.session_state and st.session_state.document_id:
         st.markdown("---")
         st.markdown("""
-        <div style="font-size:10px;font-weight:600;color:#3a3a5c;letter-spacing:1px;
+        <div style="font-size:14px;font-weight:600;color:#b9b9e5;letter-spacing:1px;
         text-transform:uppercase;margin-bottom:8px;padding-left:4px;">Current document</div>
         """, unsafe_allow_html=True)
         if "total_sections" in st.session_state:
@@ -89,7 +89,7 @@ with st.sidebar:
             pct     = int((current / total) * 100)
             st.progress(current / total)
             st.markdown(f"""
-            <div style="font-size:11px;color:#666;margin-top:4px;">
+            <div style="font-size:13px;color:#ffd9d9;margin-top:4px;">
             {current} of {total} sections · {pct}%</div>
             """, unsafe_allow_html=True)
 
@@ -270,7 +270,7 @@ elif st.session_state.step == 2:
                     "company_vision":   company_vision
                 })
                 company_id = result.get("company_id")
-            with st.spinner("Creating document & generating questions..."):
+            with st.spinner("Creating document & Generating questions..."):
                 doc         = create_document(st.session_state.template_id, company_id)
                 document_id = doc.get("document_id")
                 generate_questions(st.session_state.template_id)
@@ -291,7 +291,7 @@ elif st.session_state.step == 3:
 
     st.progress(current_section / total_sections)
     st.markdown(f"""
-    <div style="font-size:12px;color:#666;margin-bottom:16px;">
+    <div style="font-size:14px;color:#666;margin-bottom:16px;">
     Section {current_section} of {total_sections}</div>
     """, unsafe_allow_html=True)
 
@@ -311,7 +311,7 @@ elif st.session_state.step == 3:
     st.markdown(f"""
     <div style="font-size:16px;font-weight:600;color:#e0e0f0;margin-bottom:4px;">
     {section_name}</div>
-    <div style="font-size:12px;color:#666;margin-bottom:20px;">
+    <div style="font-size:14px;color:rgb(255 215 215);margin-bottom:20px;">
     Answer the questions below to generate this section.</div>
     """, unsafe_allow_html=True)
 
@@ -322,7 +322,7 @@ elif st.session_state.step == 3:
         with st.form(f"qa_{current_section}"):
             for q in questions:
                 st.markdown(f"""
-                <div style="font-size:12px;color:#8080a0;margin-bottom:4px;">{q}</div>
+                <div style="font-size:15px;color:#c2c2ff;margin-bottom:4px;">{q}</div>
                 """, unsafe_allow_html=True)
                 saved_val = saved_ans.get(q, "")
                 ans = st.text_area(
