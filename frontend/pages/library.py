@@ -67,7 +67,7 @@ with st.sidebar:
 st.markdown("""
 <div style="padding:24px 0 8px;">
     <div style="font-size:24px;font-weight:600;color:#e0e0f0;margin-bottom:4px;">
-    Document library</div>
+    Document Library</div>
     <div style="font-size:13px;color:#666;">
     Browse, download and publish all generated documents.</div>
 </div>

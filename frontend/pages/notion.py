@@ -63,7 +63,7 @@ pending   = [d for d in documents if not d["is_published"]]
 
 st.markdown("---")
 m1, m2, m3 = st.columns(3)
-m1.metric("Total documents", len(documents))
+m1.metric("Total Documents", len(documents))
 m2.metric("Published", len(published))
 m3.metric("Pending publish", len(pending))
 st.markdown("---")
