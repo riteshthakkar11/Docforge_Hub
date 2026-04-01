@@ -55,7 +55,7 @@ with st.sidebar:
     st.page_link("pages/notion.py",    label="  Notion",    icon="🚀")
 
     st.markdown("---")
-    st.markdown("""<div style="font-size:10px;font-weight:600;color:#3a3a5c;
+    st.markdown("""<div style="font-size:12px;font-weight:600;color:#6464ff;
     letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">
     Filter by department</div>""", unsafe_allow_html=True)
     departments  = get_departments()
