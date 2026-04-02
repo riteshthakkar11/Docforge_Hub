@@ -3,7 +3,6 @@ from dotenv import load_dotenv
 from backend.redis_client import redis_health,get_job_status
 from backend.routes import chat
 from backend.routes import versioning
-from backend.routes import expiry
 
 
 load_dotenv()
@@ -37,7 +36,6 @@ app.include_router(scoring.router,     tags=["Scoring"])
 app.include_router(suggestions.router, tags=["Suggestions"])
 app.include_router(chat.router,        tags=["Chat"]) 
 app.include_router(versioning.router,  tags=["Versioning"])
-app.include_router(expiry.router,      tags=["Expiry"])
 
 
 @app.get("/")
