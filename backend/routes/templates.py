@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from backend.database import get_connection
 from backend.redis_client import cache_get, cache_set
 
@@ -6,7 +6,6 @@ router = APIRouter()
 
 @router.get("/templates/{department_id}")
 def get_templates(department_id: int):
-
     cache_key = f"templates_{department_id}"
     cached    = cache_get(cache_key)
     if cached:
@@ -22,15 +21,18 @@ def get_templates(department_id: int):
     cursor.close()
     conn.close()
 
-    # Cache for 1 hour
-    cache_set(cache_key, data, ttl=3600)
+    if not data:
+        raise HTTPException(
+            status_code=404,
+            detail="No templates found for this department"
+        )
 
+    cache_set(cache_key, data, ttl=3600)
     return {"templates": data}
 
 
 @router.get("/sections/{template_id}")
 def get_sections(template_id: int):
-
     cache_key = f"sections_{template_id}"
     cached    = cache_get(cache_key)
     if cached:
@@ -51,7 +53,11 @@ def get_sections(template_id: int):
     cursor.close()
     conn.close()
 
-    # Cache for 1 hour
-    cache_set(cache_key, data, ttl=3600)
+    if not data:
+        raise HTTPException(
+            status_code=404,
+            detail="No sections found for this template"
+        )
 
+    cache_set(cache_key, data, ttl=3600)
     return {"sections": data}

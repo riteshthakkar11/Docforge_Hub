@@ -7,7 +7,6 @@ router = APIRouter()
 
 
 def get_next_version(current_version: str) -> str:
-    """v1.0 -> v1.1 -> v1.2 etc."""
     try:
         match = re.match(r'v(\d+)\.(\d+)', current_version)
         if match:
@@ -20,7 +19,6 @@ def get_next_version(current_version: str) -> str:
 
 
 def bump_document_version(document_id: str) -> str:
-    """Bump document version and return new version string."""
     conn   = get_connection()
     cursor = conn.cursor()
 
@@ -54,11 +52,9 @@ def save_section_version(
     content: str,
     version: str
 ):
-    """Save a new version of a section."""
     conn   = get_connection()
     cursor = conn.cursor()
 
-    # Mark all previous versions of this section as not latest
     cursor.execute(
         """
         UPDATE document_sections
@@ -68,7 +64,6 @@ def save_section_version(
         (document_id, section_order)
     )
 
-    # Insert new version
     cursor.execute(
         """
         INSERT INTO document_sections
@@ -85,19 +80,14 @@ def save_section_version(
 
 @router.get("/versions/{document_id}/{section_order}")
 def get_section_versions(document_id: str, section_order: int):
-    """Get all versions of a section."""
     conn   = get_connection()
     cursor = conn.cursor()
 
     cursor.execute(
         """
         SELECT
-            id,
-            section_title,
-            section_content,
-            version,
-            is_latest,
-            created_at
+            id, section_title, section_content,
+            version, is_latest, created_at
         FROM document_sections
         WHERE document_id = %s AND section_order = %s
         ORDER BY created_at DESC
@@ -107,6 +97,13 @@ def get_section_versions(document_id: str, section_order: int):
     rows = cursor.fetchall()
     cursor.close()
     conn.close()
+
+    if not rows:
+        return {
+            "document_id":   document_id,
+            "section_order": section_order,
+            "versions":      []
+        }
 
     versions = []
     for row in rows:
@@ -119,16 +116,18 @@ def get_section_versions(document_id: str, section_order: int):
             "created_at":    row[5].strftime("%B %d, %Y %H:%M") if row[5] else ""
         })
 
-    return {"document_id": document_id, "section_order": section_order, "versions": versions}
+    return {
+        "document_id":   document_id,
+        "section_order": section_order,
+        "versions":      versions
+    }
 
 
 @router.post("/versions/restore/{document_id}/{section_order}/{section_id}")
 def restore_version(document_id: str, section_order: int, section_id: str):
-    """Restore a previous version of a section."""
     conn   = get_connection()
     cursor = conn.cursor()
 
-    # Get the version to restore
     cursor.execute(
         """
         SELECT section_title, section_content, version
@@ -146,10 +145,8 @@ def restore_version(document_id: str, section_order: int, section_id: str):
     sec_title   = row[0]
     sec_content = row[1]
 
-    # Bump document version
     new_ver = bump_document_version(document_id)
 
-    # Mark all as not latest
     cursor.execute(
         """
         UPDATE document_sections
@@ -159,7 +156,6 @@ def restore_version(document_id: str, section_order: int, section_id: str):
         (document_id, section_order)
     )
 
-    # Insert restored content as new latest version
     cursor.execute(
         """
         INSERT INTO document_sections
@@ -182,7 +178,6 @@ def restore_version(document_id: str, section_order: int, section_id: str):
 
 @router.get("/versions/document/{document_id}")
 def get_document_version(document_id: str):
-    """Get current version of document."""
     conn   = get_connection()
     cursor = conn.cursor()
 
@@ -194,7 +189,10 @@ def get_document_version(document_id: str):
     cursor.close()
     conn.close()
 
+    if not row:
+        raise HTTPException(status_code=404, detail="Document not found")
+
     return {
         "document_id":     document_id,
-        "current_version": row[0] if row else "v1.0"
+        "current_version": row[0] or "v1.0"
     }
