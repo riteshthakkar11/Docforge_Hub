@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from backend.database import get_connection
 from backend.redis_client import cache_get, cache_set
 
@@ -6,8 +6,6 @@ router = APIRouter()
 
 @router.get("/departments")
 def get_departments():
-
-    # Check cache first 
     cached = cache_get("departments")
     if cached:
         return {"departments": cached}
@@ -19,7 +17,8 @@ def get_departments():
     cursor.close()
     conn.close()
 
-    # Cache for 1 hour (departments never change)
-    cache_set("departments", data, ttl=3600)
+    if not data:
+        raise HTTPException(status_code=404, detail="No departments found")
 
+    cache_set("departments", data, ttl=3600)
     return {"departments": data}
