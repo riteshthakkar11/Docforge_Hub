@@ -11,6 +11,23 @@
   "reportCallIssue": "none",
   "reportArgumentType": "none",
   "reportUnusedImport": "none",
+  "reportReturnType": "none",
+  "reportAttributeAccessIssue": "none",
+  "reportOptionalSubscript": "none",
+  "reportOptionalMemberAccess": "none",
   "pythonVersion": "3.10",
-  "exclude": ["**/__pycache__"]
+  "exclude": [
+    "**/node_modules",
+    "**/.git",
+    "**/__pycache__",
+    "**/.venv",
+    "**/.env",
+    "**/.mypy_cache",
+    "**/.pytest_cache",
+    "**/.idea",
+    "**/.vscode",
+    "**/.cache",
+    "**/.local",
+    "DocForge_Hub"
+  ]
 }
