@@ -85,7 +85,7 @@ def enhance_section(data: dict):
     if not document_id:
         raise HTTPException(status_code=400, detail="document_id required")
 
-    instruction = ACTION_MAP.get(action, "Improve the content quality")
+    instruction = ACTION_MAP.get(action or "default", "improve the quality and professionalism")
 
     if section_order is not None:
         cursor.execute(

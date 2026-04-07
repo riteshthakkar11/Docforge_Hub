@@ -1,0 +1,16 @@
+{
+  "typeCheckingMode": "basic",
+  "reportUnknownParameterType": "none",
+  "reportUnknownVariableType": "none",
+  "reportUnknownMemberType": "none",
+  "reportUnknownArgumentType": "none",
+  "reportMissingTypeArgument": "none",
+  "reportMissingParameterType": "none",
+  "reportPrivateUsage": "none",
+  "reportIndexIssue": "none",
+  "reportCallIssue": "none",
+  "reportArgumentType": "none",
+  "reportUnusedImport": "none",
+  "pythonVersion": "3.10",
+  "exclude": ["**/__pycache__"]
+}
