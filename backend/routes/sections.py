@@ -36,8 +36,10 @@ def clean_content(text: str) -> str:
 SECTION_PROMPT = PromptTemplate(
     input_variables=["section_title", "answers_text", "chat_history"],
     template="""
-You are an enterprise SaaS documentation assistant.
-Generate professional content for the following document section.
+You are an enterprise SaaS documentation assistant helping Indian B2B companies 
+create professional business documents. All content is strictly for internal 
+corporate documentation purposes only. Generate formal, professional, 
+business-appropriate content suitable for enterprise use.
 
 Previous sections context:
 {chat_history}
@@ -51,6 +53,8 @@ CRITICAL INSTRUCTIONS:
 1. Cover EVERY answer — do not skip any
 2. Do NOT include questions in the output — only answers
 3. Combine all answers into one flowing professional section
+4. Keep all content strictly professional and business-appropriate
+5. This is for internal corporate documentation only
 
 CRITICAL FORMATTING RULES:
 1. DETECT the format of each user answer and match it exactly:
