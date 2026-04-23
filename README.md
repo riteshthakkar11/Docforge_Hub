@@ -41,7 +41,7 @@ FastAPI Backend  <-->  PostgreSQL (documents, templates, sections, versions)
 |---|---|
 | Frontend | Streamlit |
 | Backend | FastAPI |
-| LLM Orchestration | LangChain + Azure OpenAI |
+| LLM Orchestration | LangChain + Azure OpenAI GPT-4.1 Mini |
 | Database | PostgreSQL |
 | Caching and Rate Limiting | Redis |
 | Document Export | ReportLab (PDF), python-docx (DOCX) |
@@ -68,7 +68,7 @@ FastAPI Backend  <-->  PostgreSQL (documents, templates, sections, versions)
 ### Clone the repository
 
 ```bash
-git clone https://github.com/riteshturabit/Docforge_Hub.git
+git clone https://github.com/riteshthakkar11/Docforge_Hub.git
 cd Docforge_Hub
 ```
 
@@ -82,14 +82,7 @@ source DocForge_Hub/bin/activate
 ### Install dependencies
 
 ```bash
-# Install uv first if not already installed
-pip install uv
-
-# Install all project dependencies
-uv pip install fastapi uvicorn streamlit langchain-core langchain-community \
-    langchain-classic psycopg2-binary redis python-dotenv notion-client \
-    reportlab python-docx pydantic pydantic-settings httpx requests \
-    python-dateutil tenacity
+uv sync
 ```
 
 ### Environment variables
@@ -99,9 +92,15 @@ Create a `.env` file in the root directory:
 ```env
 # Azure OpenAI
 AZURE_OPENAI_LLM_KEY=your_azure_openai_key
-AZURE_LLM_ENDPOINT=your_azure_endpoint
-AZURE_LLM_API_VERSION=2024-02-01
-AZURE_LLM_DEPLOYMENT_41_MINI=your_deployment_name
+AZURE_LLM_ENDPOINT=https://your-endpoint.openai.azure.com/
+AZURE_LLM_API_VERSION=2025-01-01-preview
+AZURE_LLM_DEPLOYMENT_41_MINI=gpt-4.1-mini
+
+# Azure Embeddings
+AZURE_OPENAI_EMB_KEY=your_azure_embedding_key
+AZURE_EMB_ENDPOINT=https://your-endpoint.openai.azure.com/
+AZURE_EMB_API_VERSION=2024-12-01-preview
+AZURE_EMBEDDINGS_DEPLOYMENT=text-embedding-3-large
 
 # Notion
 NOTION_TOKEN=your_notion_integration_token
@@ -152,7 +151,7 @@ redis-cli ping
 ```bash
 # From project root
 source DocForge_Hub/bin/activate
-uvicorn backend.main:app --reload
+uvicorn backend.main:app --reload --port 8000
 ```
 
 ### Run the frontend
@@ -160,8 +159,7 @@ uvicorn backend.main:app --reload
 ```bash
 # From project root in a new terminal
 source DocForge_Hub/bin/activate
-cd frontend
-streamlit run app.py
+streamlit run frontend/app.py --server.port 8501
 ```
 
 ### API documentation
@@ -244,7 +242,28 @@ Policy, SOP, Documentation, Plan, Report
 
 ---
 
-## 6. Limits and Next Steps
+## 6. Route Modules
+
+| Module | Method | Endpoint | Description |
+|---|---|---|---|
+| departments | GET | /departments | List all departments |
+| templates | GET | /templates/{dept_id} | Templates by department |
+| company | POST | /company-context | Save company details |
+| documents | POST | /create-document | Create new document |
+| questions | POST | /generate_questions | AI question generation |
+| sections | POST | /generate_section | AI section generation |
+| scoring | POST | /score_document | Quality scoring |
+| enhance | POST | /enhance_section | Section enhancement |
+| downloads | GET | /download/pdf/{id} | PDF download |
+| downloads | GET | /download/docx/{id} | DOCX download |
+| notion | POST | /push_to_notion | Publish to Notion |
+| chat | POST | /chat_document | Chat with document |
+| versioning | GET | /versions/{id}/{order} | Section version history |
+| suggestions | POST | /suggest_templates | AI template suggestions |
+
+---
+
+## 7. Limits and Next Steps
 
 ### Current limits
 
@@ -253,12 +272,10 @@ Policy, SOP, Documentation, Plan, Report
 - Multi-language document generation is not supported yet — English only
 - Docker setup not yet included — requires manual local environment setup
 - No user authentication — single admin mode only, no multi-user support
-- No `requirements.txt` yet — dependencies must be installed manually using uv
 
 ### Next steps
 
 - Add Docker support for one-command local run with all services
-- Add `requirements.txt` for easier dependency management
 - Add user authentication and role-based access (admin, viewer, editor)
 - Support multiple LLM providers (OpenAI, Anthropic, Gemini) with fallback
 - Add multi-language document generation
