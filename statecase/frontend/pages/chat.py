@@ -3,6 +3,8 @@ import requests
 import streamlit as st
 from statecase.frontend.config import API_BASE_URL
 
+CITERAG_API_URL = "http://localhost:8001"
+
 st.set_page_config(
     page_title="StateCase — Chat",
     page_icon="💬",
@@ -19,13 +21,22 @@ if "messages" not in st.session_state:
 with st.sidebar:
     st.header("⚙️ Settings")
 
+    # Fetch actual industries from CiteRAG dynamically
+    try:
+        resp = requests.get(
+            f"{CITERAG_API_URL}/retrieve/filters",
+            timeout=5
+        )
+        if resp.status_code == 200:
+            available_industries = resp.json().get("industries", [])
+        else:
+            available_industries = []
+    except Exception:
+        available_industries = []
+
     industry = st.selectbox(
         "Your Industry",
-        [
-            "Auto-detect",
-            "FinTech", "SaaS", "Healthcare",
-            "Legal", "Manufacturing", "Telecom"
-        ]
+        ["Auto-detect"] + available_industries
     )
 
     st.markdown("---")
@@ -46,7 +57,7 @@ industry_val = (
     None if industry == "Auto-detect" else industry
 )
 
-# Page Header
+# Page Header 
 st.title("💬 StateCase Assistant")
 st.markdown(
     "Ask questions about your enterprise documents. "
@@ -109,17 +120,21 @@ if prompt := st.chat_input("Ask anything about your documents..."):
                 )
                 data = resp.json()
 
-                reply     = data.get("reply", "No response")
-                state     = data.get("state", "unknown")
-                citations = data.get("citations", [])
-                ticket_id = data.get("ticket_id")
-                confidence= data.get("confidence", 0)
+                reply      = data.get("reply", "No response")
+                state      = data.get("state", "unknown")
+                citations  = data.get("citations", [])
+                ticket_id  = data.get("ticket_id")
+                confidence = data.get("confidence", 0)
 
                 # State badge
                 if state == "answered":
-                    st.success(f"✅ Answered | Confidence: {confidence}%")
+                    st.success(
+                        f"✅ Answered | Confidence: {confidence}%"
+                    )
                 elif state == "ticket_created":
-                    st.error("🎫 Not found in documents — ticket created!")
+                    st.error(
+                        "🎫 Not found in documents — ticket created!"
+                    )
                 elif state == "clarify":
                     st.info("💬 Clarification needed")
 

@@ -92,7 +92,7 @@ def chat(data: ChatRequest):
         "last_action":   session.get("last_action", ""),  # ← Track last action
     }
 
-    # ── Node 1: Clarify ───────────────────────────────────────
+    # Node 1: Clarify 
     graph_state = node_clarify(graph_state)
     route       = route_after_clarify(graph_state)
 
@@ -117,12 +117,12 @@ def chat(data: ChatRequest):
             confidence=0.0
         )
 
-    # ── Node 2: Retrieve ──────────────────────────────────────
+    #  Node 2: Retrieve 
     graph_state = node_retrieve(graph_state)
     route       = route_after_retrieve(graph_state)
 
     if route == "answer":
-        # ── Node 3: Answer ────────────────────────────────────
+        # Node 3: Answer 
         graph_state = node_answer(graph_state)
 
         save_message(data.session_id, "user", data.message)
@@ -141,7 +141,7 @@ def chat(data: ChatRequest):
         )
 
     else:
-        # ── Node 4: Insufficient → Create Ticket ─────────────
+        #  Node 4: Insufficient → Create Ticket 
         graph_state = node_insufficient(graph_state)
         ticket_id   = None
         notion_url  = None

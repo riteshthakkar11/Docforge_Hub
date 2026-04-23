@@ -523,7 +523,7 @@ elif st.session_state.step == 4:
     document_id = st.session_state.document_id
     doc         = get_document(document_id)
 
-    # ── Document title with version badge ─────────────────
+    # Document title with version badge 
     ver_info    = get_document_version(document_id)
     current_ver = ver_info.get("current_version", "v1.0")
 
@@ -555,7 +555,7 @@ elif st.session_state.step == 4:
 
     st.markdown("---")
 
-    # ── Quality Score ─────────────────────────────────────
+    # Quality Score 
     existing_score = get_score(document_id)
     if existing_score.get("overall_score") is None:
         with st.spinner("Analyzing document quality..."):
@@ -637,7 +637,7 @@ elif st.session_state.step == 4:
 
     st.markdown("---")
 
-    # ── Export bar ────────────────────────────────────────
+    # Export bar 
     col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
     with col1:
         st.markdown("""
@@ -682,7 +682,7 @@ elif st.session_state.step == 4:
 
     st.markdown("---")
 
-    # ── Sections preview with version history ─────────────
+    # Sections preview with version history 
     sections = doc.get("sections", [])
     for sec in sections:
         with st.expander(f"{sec['order']}. {sec['title']}"):
@@ -745,7 +745,7 @@ elif st.session_state.step == 4:
 
     st.markdown("---")
 
-    # ── Document Chat ─────────────────────────────────────
+    # Document Chat 
     st.markdown("""
     <div style="font-size:15px;font-weight:600;color:#e0e0f0;margin-bottom:4px;">
     💬 Ask AI about this document</div>

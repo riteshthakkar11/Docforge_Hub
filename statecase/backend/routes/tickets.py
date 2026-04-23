@@ -44,7 +44,7 @@ def create_ticket(data: TicketRequest):
         )
 
     try:
-        # ── Create Notion page with retry logic ───────────────
+        #  Create Notion page with retry logic 
         notion_page = None
         last_error  = None
 
@@ -152,7 +152,7 @@ def create_ticket(data: TicketRequest):
             f"{notion_ticket_id.replace('-', '')}"
         )
 
-        # ── Save to PostgreSQL ────────────────────────────────
+        # Save to PostgreSQL
         conn   = get_connection()
         cursor = conn.cursor()
         try:
