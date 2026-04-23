@@ -19,9 +19,9 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
-    st.page_link("app.py",            label="🏠 Dashboard",  icon="🏠")
-    st.page_link("pages/chat.py",     label="💬 Chat",        icon="💬")
-    st.page_link("pages/tickets.py",  label="🎫 My Tickets",  icon="🎫")
+    st.page_link("app.py",            label=" Dashboard",  icon="🏠")
+    st.page_link("pages/chat.py",     label=" Chat",        icon="💬")
+    st.page_link("pages/tickets.py",  label=" My Tickets",  icon="🎫")
     st.markdown("---")
     st.info("Powered by LangGraph + CiteRAG + Notion")
 

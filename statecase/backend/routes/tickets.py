@@ -1,5 +1,6 @@
 import os
 import json
+import time
 import logging
 from fastapi import APIRouter, HTTPException
 from notion_client import Client
@@ -26,7 +27,7 @@ def create_ticket(data: TicketRequest):
 
     Flow:
     1. Check Redis lock → prevent duplicates
-    2. Create Notion page with full context
+    2. Create Notion page with retry logic
     3. Save to PostgreSQL for tracking
     4. Return ticket ID + URL
     """
@@ -43,75 +44,107 @@ def create_ticket(data: TicketRequest):
         )
 
     try:
-        # Create Notion page
-        notion_page = notion.pages.create(
-            parent={"database_id": TICKETS_DB_ID},
-            properties={
-                "Name": {
-                    "title": [{"text": {"content": data.question[:100]}}]
-                },
-                "Status": {
-                    "select": {"name": "Open"}
-                },
-                "Priority": {
-                    "select": {"name": data.priority}
-                },
-                "Session ID": {
-                    "rich_text": [{"text": {"content": data.session_id}}]
-                },
-                "Assigned Owner": {
-                    "rich_text": [{"text": {"content": data.assigned_owner}}]
-                },
-            },
-            children=[
-                {
-                    "object": "block",
-                    "type":   "heading_2",
-                    "heading_2": {
-                        "rich_text": [{"text": {"content": "Question"}}]
-                    }
-                },
-                {
-                    "object": "block",
-                    "type":   "paragraph",
-                    "paragraph": {
-                        "rich_text": [{"text": {"content": data.question}}]
-                    }
-                },
-                {
-                    "object": "block",
-                    "type":   "heading_2",
-                    "heading_2": {
-                        "rich_text": [{"text": {"content": "Sources Attempted"}}]
-                    }
-                },
-                {
-                    "object": "block",
-                    "type":   "paragraph",
-                    "paragraph": {
-                        "rich_text": [{"text": {"content": (
-                            ", ".join(data.sources_tried)
-                            if data.sources_tried
-                            else "No matching sources found"
-                        )}}]
-                    }
-                },
-                {
-                    "object": "block",
-                    "type":   "heading_2",
-                    "heading_2": {
-                        "rich_text": [{"text": {"content": "Summary"}}]
-                    }
-                },
-                {
-                    "object": "block",
-                    "type":   "paragraph",
-                    "paragraph": {
-                        "rich_text": [{"text": {"content": data.summary}}]
-                    }
-                },
-            ]
-        )
+        # ── Create Notion page with retry logic ───────────────
+        notion_page = None
+        last_error  = None
+
+        for attempt in range(3):
+            try:
+                notion_page = notion.pages.create(
+                    parent={"database_id": TICKETS_DB_ID},
+                    properties={
+                        "Name": {
+                            "title": [{"text": {"content": data.question[:100]}}]
+                        },
+                        "Status": {
+                            "select": {"name": "Open"}
+                        },
+                        "Priority": {
+                            "select": {"name": data.priority}
+                        },
+                        "Session ID": {
+                            "rich_text": [{"text": {"content": data.session_id}}]
+                        },
+                        "Assigned Owner": {
+                            "rich_text": [{"text": {"content": data.assigned_owner}}]
+                        },
+                    },
+                    children=[
+                        {
+                            "object": "block",
+                            "type":   "heading_2",
+                            "heading_2": {
+                                "rich_text": [{"text": {"content": "Question"}}]
+                            }
+                        },
+                        {
+                            "object": "block",
+                            "type":   "paragraph",
+                            "paragraph": {
+                                "rich_text": [{"text": {"content": data.question}}]
+                            }
+                        },
+                        {
+                            "object": "block",
+                            "type":   "heading_2",
+                            "heading_2": {
+                                "rich_text": [{"text": {"content": "Sources Attempted"}}]
+                            }
+                        },
+                        {
+                            "object": "block",
+                            "type":   "paragraph",
+                            "paragraph": {
+                                "rich_text": [{"text": {"content": (
+                                    ", ".join(data.sources_tried)
+                                    if data.sources_tried
+                                    else "No matching sources found"
+                                )}}]
+                            }
+                        },
+                        {
+                            "object": "block",
+                            "type":   "heading_2",
+                            "heading_2": {
+                                "rich_text": [{"text": {"content": "Summary"}}]
+                            }
+                        },
+                        {
+                            "object": "block",
+                            "type":   "paragraph",
+                            "paragraph": {
+                                "rich_text": [{"text": {"content": data.summary}}]
+                            }
+                        },
+                    ]
+                )
+                # Success → break retry loop
+                logger.info(f"Notion page created on attempt {attempt + 1}")
+                break
+
+            except Exception as e:
+                last_error = e
+                if attempt < 2:
+                    wait_time = 2 ** attempt  # 1s, 2s, 4s
+                    logger.warning(
+                        f"Notion attempt {attempt + 1} failed | "
+                        f"retrying in {wait_time}s | {e}"
+                    )
+                    time.sleep(wait_time)
+                else:
+                    logger.error(
+                        f"Notion failed after 3 attempts | {e}"
+                    )
+                    raise HTTPException(
+                        status_code=500,
+                        detail=f"Notion API failed: {str(e)}"
+                    )
+
+        if not notion_page:
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to create Notion page"
+            )
 
         notion_ticket_id = notion_page["id"]
         notion_url = (
@@ -119,7 +152,7 @@ def create_ticket(data: TicketRequest):
             f"{notion_ticket_id.replace('-', '')}"
         )
 
-        # Save to PostgreSQL
+        # ── Save to PostgreSQL ────────────────────────────────
         conn   = get_connection()
         cursor = conn.cursor()
         try:
@@ -143,6 +176,10 @@ def create_ticket(data: TicketRequest):
                 )
             )
             conn.commit()
+            logger.info(
+                f"Ticket saved to DB | "
+                f"notion_id={notion_ticket_id}"
+            )
         finally:
             cursor.close()
             release_connection(conn)

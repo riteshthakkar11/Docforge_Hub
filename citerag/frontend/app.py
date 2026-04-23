@@ -20,10 +20,10 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
-    st.page_link("app.py",                label="🏠 Dashboard",            icon="🏠")
-    st.page_link("pages/chat.py",         label="💬 Q&A Chat",             icon="💬")
-    st.page_link("pages/inspector.py",    label="🔎 Retrieval Inspector",   icon="🔎")
-    st.page_link("pages/evaluation.py",   label="📊 RAGAS Evaluation",      icon="📊")
+    st.page_link("app.py",                label=" Dashboard",            icon="🏠")
+    st.page_link("pages/chat.py",         label=" Q&A Chat",             icon="💬")
+    st.page_link("pages/inspector.py",    label=" Retrieval Inspector",   icon="🔎")
+    st.page_link("pages/evaluation.py",   label=" RAGAS Evaluation",      icon="📊")
     st.markdown("---")
     st.info("Powered by Azure OpenAI + Qdrant + LangChain")
 

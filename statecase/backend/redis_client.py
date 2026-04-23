@@ -76,7 +76,7 @@ def check_rate_limit(key: str,
         return True
 
 
-def set_ticket_lock(question: str, ttl: int = 300) -> bool:
+def set_ticket_lock(question: str, ttl: int = 60) -> bool:
     """
     Prevent duplicate ticket creation using NX lock.
     Hashes question text to create unique key.

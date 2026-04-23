@@ -16,7 +16,7 @@ VECTOR_SIZE           = 3072    # text-embedding-3-large
 
 # RAG 
 DEFAULT_TOP_K         = 5       # default chunks to retrieve
-MIN_CONFIDENCE        = 0.45    # anti-hallucination threshold
+MIN_CONFIDENCE        = 0.6    # anti-hallucination threshold
 CHUNK_SIZE            = 500     # characters per chunk
 MEMORY_MESSAGES       = 6       # last N messages for context
 

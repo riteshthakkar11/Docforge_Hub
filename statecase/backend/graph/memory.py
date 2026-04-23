@@ -1,4 +1,5 @@
 import logging
+import json
 from statecase.backend.database import get_connection, release_connection
 from statecase.backend.redis_client import (
     cache_state, get_state,
@@ -95,7 +96,7 @@ def save_session(session_id: str, state: dict):
                 state.get("user_industry", "General"),
                 state.get("current_intent"),
                 state.get("state", "idle"),
-                str(state.get("last_retrieved", ""))
+                json.dumps(state.get("last_retrieved") or [])
             )
         )
         conn.commit()
