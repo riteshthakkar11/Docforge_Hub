@@ -22,17 +22,6 @@ TICKETS_DB_ID = os.getenv("NOTION_TICKETS_DB_ID")
 
 @router.post("/tickets", response_model=TicketResponse)
 def create_ticket(data: TicketRequest):
-    """
-    Create support ticket in Notion.
-
-    Flow:
-    1. Check Redis lock → prevent duplicates
-    2. Create Notion page with retry logic
-    3. Save to PostgreSQL for tracking
-    4. Return ticket ID + URL
-    """
-
-    # Duplicate prevention
     if not set_ticket_lock(data.question):
         logger.warning(
             f"Duplicate ticket prevented | "
@@ -44,9 +33,7 @@ def create_ticket(data: TicketRequest):
         )
 
     try:
-        #  Create Notion page with retry logic 
         notion_page = None
-        last_error  = None
 
         for attempt in range(3):
             try:
@@ -56,12 +43,8 @@ def create_ticket(data: TicketRequest):
                         "Name": {
                             "title": [{"text": {"content": data.question[:100]}}]
                         },
-                        "Status": {
-                            "select": {"name": "Open"}
-                        },
-                        "Priority": {
-                            "select": {"name": data.priority}
-                        },
+                        "Status":   {"select": {"name": "Open"}},
+                        "Priority": {"select": {"name": data.priority}},
                         "Session ID": {
                             "rich_text": [{"text": {"content": data.session_id}}]
                         },
@@ -118,23 +101,19 @@ def create_ticket(data: TicketRequest):
                         },
                     ]
                 )
-                # Success → break retry loop
                 logger.info(f"Notion page created on attempt {attempt + 1}")
                 break
 
             except Exception as e:
-                last_error = e
                 if attempt < 2:
-                    wait_time = 2 ** attempt  # 1s, 2s, 4s
+                    wait_time = 2 ** attempt
                     logger.warning(
                         f"Notion attempt {attempt + 1} failed | "
                         f"retrying in {wait_time}s | {e}"
                     )
                     time.sleep(wait_time)
                 else:
-                    logger.error(
-                        f"Notion failed after 3 attempts | {e}"
-                    )
+                    logger.error(f"Notion failed after 3 attempts | {e}")
                     raise HTTPException(
                         status_code=500,
                         detail=f"Notion API failed: {str(e)}"
@@ -152,7 +131,6 @@ def create_ticket(data: TicketRequest):
             f"{notion_ticket_id.replace('-', '')}"
         )
 
-        # Save to PostgreSQL
         conn   = get_connection()
         cursor = conn.cursor()
         try:
@@ -176,10 +154,7 @@ def create_ticket(data: TicketRequest):
                 )
             )
             conn.commit()
-            logger.info(
-                f"Ticket saved to DB | "
-                f"notion_id={notion_ticket_id}"
-            )
+            logger.info(f"Ticket saved to DB | notion_id={notion_ticket_id}")
         finally:
             cursor.close()
             release_connection(conn)
@@ -206,7 +181,6 @@ def create_ticket(data: TicketRequest):
 
 @router.get("/tickets")
 def get_tickets(session_id: str = None):
-    """Get all tickets or filter by session"""
     conn   = get_connection()
     cursor = conn.cursor()
     try:
@@ -233,7 +207,6 @@ def get_tickets(session_id: str = None):
                 LIMIT 50
                 """
             )
-
         rows = cursor.fetchall()
         return [
             {
@@ -251,6 +224,61 @@ def get_tickets(session_id: str = None):
             }
             for r in rows
         ]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cursor.close()
+        release_connection(conn)
+
+
+@router.get("/tickets/analytics")
+def get_ticket_analytics():
+    """
+    Ticket analytics dashboard data
+    Unique feature: priority trends + daily chart!
+    """
+    conn   = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            "SELECT priority, COUNT(*) FROM sc_tickets GROUP BY priority"
+        )
+        priority_dist = {r[0]: r[1] for r in cursor.fetchall()}
+
+        cursor.execute(
+            "SELECT status, COUNT(*) FROM sc_tickets GROUP BY status"
+        )
+        status_dist = {r[0]: r[1] for r in cursor.fetchall()}
+
+        cursor.execute(
+            """
+            SELECT DATE(created_at) as date, COUNT(*) as count
+            FROM sc_tickets
+            WHERE created_at >= NOW() - INTERVAL '7 days'
+            GROUP BY DATE(created_at)
+            ORDER BY date ASC
+            """
+        )
+        daily = [
+            {"date": str(r[0]), "count": r[1]}
+            for r in cursor.fetchall()
+        ]
+
+        cursor.execute("SELECT COUNT(*) FROM sc_tickets")
+        total = cursor.fetchone()[0]
+
+        cursor.execute(
+            "SELECT COUNT(*) FROM sc_tickets WHERE status='Open'"
+        )
+        open_count = cursor.fetchone()[0]
+
+        return {
+            "total_tickets":          total,
+            "open_tickets":           open_count,
+            "priority_distribution":  priority_dist,
+            "status_distribution":    status_dist,
+            "daily_tickets":          daily
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:

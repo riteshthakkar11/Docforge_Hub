@@ -1,4 +1,5 @@
 import requests
+import pandas as pd
 import streamlit as st
 from statecase.frontend.config import API_BASE_URL
 
@@ -25,7 +26,7 @@ st.markdown("---")
 col1, col2, col3 = st.columns([3, 1, 1])
 with col1:
     session_filter = st.text_input(
-        "Filter by Session ID (leave empty for all):",
+        "Filter by Session ID:",
         placeholder="Optional — paste session ID here",
         label_visibility="collapsed"
     )
@@ -34,7 +35,7 @@ with col2:
 with col3:
     refresh = st.button("🔄 Refresh", use_container_width=True)
 
-# Load Tickets
+# Load Tickets 
 if refresh or True:
     params = {}
     if session_filter and not show_all:
@@ -49,7 +50,6 @@ if refresh or True:
         tickets = resp.json()
 
         if tickets:
-            # Summary metrics
             total    = len(tickets)
             open_t   = len([t for t in tickets if t["status"] == "Open"])
             high_p   = len([t for t in tickets if t["priority"] == "High"])
@@ -62,7 +62,6 @@ if refresh or True:
             c4.metric("Resolved",      resolved)
             st.markdown("---")
 
-            # Tickets list
             for ticket in tickets:
                 p_color = (
                     "🔴" if ticket["priority"] == "High"
@@ -74,7 +73,6 @@ if refresh or True:
                     else "🟡" if ticket["status"] == "In Progress"
                     else "🔴"
                 )
-
                 with st.expander(
                     f"{p_color} #{ticket['id']} — "
                     f"{ticket['question'][:70]}... | "
@@ -98,12 +96,69 @@ if refresh or True:
                             st.markdown(
                                 f"[🔗 Open in Notion]({ticket['notion_url']})"
                             )
-
         else:
             st.success(
                 "🎉 No tickets yet! "
-                "All questions were answered from the document library."
+                "All questions answered from document library."
             )
 
     except Exception as e:
         st.error(f"Failed to load tickets: {str(e)}")
+
+# Ticket Analytics 
+st.markdown("---")
+st.subheader("📊 Ticket Analytics")
+st.caption("Priority distribution and daily ticket trends")
+
+try:
+    resp = requests.get(
+        f"{API_BASE_URL}/tickets/analytics",
+        timeout=5
+    )
+    if resp.status_code == 200:
+        data = resp.json()
+
+        c1, c2 = st.columns(2)
+        with c1:
+            st.metric("Total Tickets", data["total_tickets"])
+        with c2:
+            st.metric("Open Tickets",  data["open_tickets"])
+
+        col_a, col_b = st.columns(2)
+
+        with col_a:
+            st.markdown("**Priority Distribution:**")
+            priority = data.get("priority_distribution", {})
+            if priority:
+                pr_df = pd.DataFrame(
+                    list(priority.items()),
+                    columns=["Priority", "Count"]
+                ).set_index("Priority")
+                st.bar_chart(pr_df)
+            else:
+                st.info("No priority data yet!")
+
+        with col_b:
+            st.markdown("**Status Distribution:**")
+            status = data.get("status_distribution", {})
+            if status:
+                for k, v in status.items():
+                    color = (
+                        "🟢" if k == "Resolved"
+                        else "🟡" if k == "In Progress"
+                        else "🔴"
+                    )
+                    st.markdown(f"{color} **{k}**: {v} tickets")
+            else:
+                st.info("No status data yet!")
+
+        st.markdown("**Tickets Created — Last 7 Days:**")
+        daily = data.get("daily_tickets", [])
+        if daily:
+            daily_df = pd.DataFrame(daily).set_index("date")
+            st.line_chart(daily_df)
+        else:
+            st.info("No tickets in last 7 days!")
+
+except Exception:
+    st.info("Create tickets to see analytics here!")

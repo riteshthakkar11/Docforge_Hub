@@ -1,5 +1,6 @@
 import streamlit as st
 import requests
+import pandas as pd
 from citerag.frontend.config import API_BASE_URL
 
 st.set_page_config(
@@ -19,15 +20,14 @@ with st.sidebar:
         Document Intelligence Platform</div>
     </div>
     """, unsafe_allow_html=True)
-
-    st.page_link("app.py",                label=" Dashboard",            icon="🏠")
-    st.page_link("pages/chat.py",         label=" Q&A Chat",             icon="💬")
-    st.page_link("pages/inspector.py",    label=" Retrieval Inspector",   icon="🔎")
-    st.page_link("pages/evaluation.py",   label=" RAGAS Evaluation",      icon="📊")
+    st.page_link("app.py",              label=" Dashboard",          icon="🏠")
+    st.page_link("pages/chat.py",       label=" Q&A Chat",           icon="💬")
+    st.page_link("pages/inspector.py",  label=" Retrieval Inspector", icon="🔎")
+    st.page_link("pages/evaluation.py", label=" RAGAS Evaluation",    icon="📊")
     st.markdown("---")
     st.info("Powered by Azure OpenAI + Qdrant + LangChain")
 
-# Hero
+# Hero 
 st.markdown("""
 <div style="padding:24px 0 8px;">
     <div style="font-size:28px;font-weight:700;color:#e0e0f0;">
@@ -40,7 +40,7 @@ st.markdown("""
 
 st.markdown("---")
 
-# Stats from API 
+# Stats 
 try:
     resp = requests.get(f"{API_BASE_URL}/ingest/status", timeout=5)
     if resp.status_code == 200:
@@ -48,20 +48,20 @@ try:
         col1, col2, col3, col4 = st.columns(4)
         col1.metric("Total Documents",  stats.get("total_docs", 0))
         col2.metric("Total Chunks",     stats.get("total_chunks", 0))
-        col3.metric("Industries",        stats.get("industries", 0))
+        col3.metric("Industries",       stats.get("industries", 0))
         col4.metric("Status",           stats.get("status", "unknown").upper())
     else:
         st.warning("Could not fetch stats from API")
 except Exception:
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Total Documents",  "—")
-    col2.metric("Total Chunks",     "—")
-    col3.metric("Industries",        "—")
-    col4.metric("Status",           "—")
+    col1.metric("Total Documents", "—")
+    col2.metric("Total Chunks",    "—")
+    col3.metric("Industries",      "—")
+    col4.metric("Status",          "—")
 
 st.markdown("---")
 
-# Quick Actions 
+#  Quick Actions 
 st.subheader("Quick Actions")
 col1, col2, col3 = st.columns(3)
 
@@ -112,7 +112,7 @@ with col3:
 
 st.markdown("---")
 
-# Ingest Section
+# Ingest Section 
 st.subheader("📥 Ingest Notion Documents")
 st.markdown(
     "Ingest your Notion document library into CiteRAG "
@@ -148,3 +148,60 @@ if st.button("🚀 Start Ingestion", type="primary") and db_id:
             st.rerun()
         except Exception as e:
             st.error(f"Ingestion failed: {str(e)}")
+
+st.markdown("---")
+
+# Knowledge Gap Report
+st.subheader("🔍 Knowledge Gap Report")
+st.caption(
+    "Questions that couldn't be answered — "
+    "showing what's missing in your document library!"
+)
+
+try:
+    resp = requests.get(f"{API_BASE_URL}/knowledge-gaps", timeout=5)
+    if resp.status_code == 200:
+        gaps_data = resp.json()
+        gaps      = gaps_data.get("gaps", [])
+        total     = gaps_data.get("total_gaps", 0)
+
+        if gaps:
+            st.warning(f"⚠️ {total} knowledge gaps detected!")
+            for g in gaps[:5]:
+                conf  = g.get("confidence", 0)
+                color = "🔴" if conf < 30 else "🟡"
+                st.markdown(
+                    f"{color} **{g['question'][:80]}** "
+                    f"— Confidence: {round(conf, 1)}% "
+                    f"| Asked: {g['asked_at'][:10]}"
+                )
+        else:
+            st.success("✅ No knowledge gaps! All questions answered well!")
+except Exception:
+    st.info("Ask questions to see knowledge gaps here!")
+
+st.markdown("---")
+
+# Document Health Score 
+st.subheader("📊 Document Health Score")
+st.caption(
+    "Coverage analysis of your document library"
+)
+
+try:
+    resp = requests.get(f"{API_BASE_URL}/docs/health", timeout=5)
+    if resp.status_code == 200:
+        docs = resp.json().get("documents", [])
+        if docs:
+            df = pd.DataFrame(docs)
+            df.columns = [
+                "Document", "Chunks", "Sections", "Health Score"
+            ]
+            st.dataframe(df, use_container_width=True)
+
+            st.markdown("**Health Score by Document:**")
+            st.bar_chart(
+                df.set_index("Document")["Health Score"]
+            )
+except Exception:
+    st.info("Ingest documents to see health scores!")

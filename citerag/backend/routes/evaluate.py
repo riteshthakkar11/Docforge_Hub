@@ -16,21 +16,6 @@ logger = logging.getLogger("citerag.routes.evaluate")
 
 @router.post("/evaluate")
 def run_evaluation(data: EvalRequest):
-    """
-    Run evaluation batch on list of questions.
-
-    For each question:
-    1. Call answer endpoint
-    2. Record: answer, citations, confidence, has_evidence
-    3. Calculate aggregate scores
-    4. Save run to PostgreSQL
-
-    Metrics:
-    → answer_rate     = % questions answered
-    → avg_confidence  = average confidence score
-    → faithfulness    = confidence / 100 (proxy)
-    → answer_relevancy = answer_rate / 100 (proxy)
-    """
     logger.info(
         f"Eval run started | "
         f"run={data.run_name} | "
@@ -47,7 +32,6 @@ def run_evaluation(data: EvalRequest):
                 filters=data.filters
             )
             result = answer_question(ans_req)
-
             results.append(EvalResult(
                 question=question,
                 answer=result["answer"],
@@ -67,7 +51,6 @@ def run_evaluation(data: EvalRequest):
                 chunks_used=0
             ))
 
-    # Calculate aggregate metrics
     answered       = [r for r in results if r.has_evidence]
     avg_confidence = (
         sum(r.confidence for r in answered) / len(answered)
@@ -78,7 +61,6 @@ def run_evaluation(data: EvalRequest):
         if results else 0.0
     )
 
-    # Save to PostgreSQL
     conn   = get_connection()
     cursor = conn.cursor()
     try:
@@ -124,7 +106,6 @@ def run_evaluation(data: EvalRequest):
 
 @router.get("/evaluate/history")
 def get_eval_history():
-    """Get all past evaluation runs"""
     conn   = get_connection()
     cursor = conn.cursor()
     try:
@@ -150,6 +131,44 @@ def get_eval_history():
             }
             for r in rows
         ]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cursor.close()
+        release_connection(conn)
+
+
+@router.get("/knowledge-gaps")
+def get_knowledge_gaps():
+    """
+    Returns questions that had no/low evidence
+    These represent gaps in the document library
+    Unique feature: helps identify missing knowledge!
+    """
+    conn   = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            """
+            SELECT question, confidence, created_at
+            FROM citerag_sessions
+            WHERE confidence < 60
+            ORDER BY created_at DESC
+            LIMIT 20
+            """
+        )
+        rows = cursor.fetchall()
+        return {
+            "gaps": [
+                {
+                    "question":   r[0],
+                    "confidence": r[1],
+                    "asked_at":   str(r[2])
+                }
+                for r in rows
+            ],
+            "total_gaps": len(rows)
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
