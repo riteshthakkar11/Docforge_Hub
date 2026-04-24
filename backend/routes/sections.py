@@ -15,8 +15,8 @@ logger = logging.getLogger("docforge.sections")
 SECTION_PROMPT = PromptTemplate(
     input_variables=["section_title", "answers_text", "chat_history"],
     template="""
-You are an enterprise documentation writer for Indian B2B companies.
-Generate professional business document content strictly based on the answers provided.
+You are an enterprise documentation assistant for Indian B2B companies.
+Your job is to generate professional business document sections.
 
 Previous sections context:
 {chat_history}
@@ -26,85 +26,64 @@ Current Section: {section_title}
 User Answers:
 {answers_text}
 
-Generation rules:
+Your task:
+- If user answers are provided, use them to generate the section content
+- If no answers are provided or answers are empty, generate content
+  strictly based on what the QUESTIONS are asking about
+- Read each question carefully and generate answer content
+  relevant to that specific question topic
+- Do not generate generic definitions, purposes or objectives
+- Generate practical, specific, actionable content
 
-1. Process each question and answer one by one separately
-2. For each question:
-   - Extract 1 to 3 key words from the question that best describe the topic
-   - Use those key words as a bold sub-heading title for that answer
-   - Generate EXACTLY 2 bullet points for that answer only
-   - Each bullet point should be 2 to 3 lines long
-   - Content must be strictly based on the user answer provided
-   - Do not add random content not mentioned in the answer
-   - Do not mix content from different questions
+Output format rules:
+- Always generate content in the same format the user used
+- If user wrote bullet points, output bullet points using the symbol
+- If user wrote paragraphs, output paragraphs
+- If user wrote a table, output a pipe table
+- If no user answers, generate professional bullet points by default
 
-3. If no answer is provided for a question:
-   - Still generate the bold sub-heading from question keywords
-   - Generate EXACTLY 2 relevant professional bullet points
+Bullet point rules:
+- Use bullet symbol for each point
+- Every bullet point MUST have a bold label before the colon
+- Bold label MUST use ** ** on both sides like this: **Label**
+- Format: • **Label:** description here
+- The label must be 1 to 3 words extracted from the content
+- Keep full content as the user wrote it, do not shorten anything
+- Each bullet point on its own line
 
-4. Output format for each question:
+Table rules:
+- Use proper pipe format
+- | Column 1 | Column 2 | Column 3 |
+- | Value 1  | Value 2  | Value 3  |
 
-**Sub-heading Title From Question Keywords**
-- **Bold Label:** Detailed description here spanning 2 to 3 lines covering
-  the specific point mentioned in the user answer with relevant context
-  and professional language appropriate for enterprise documentation
-- **Bold Label:** Another specific point from the answer with 2 to 3 lines
-  of professional content directly related to what the user answered
+Paragraph rules:
+- Split long paragraphs into chunks of maximum 4 lines
+- Add blank line between each chunk
+- Never cut a sentence in the middle
 
-5. Bullet point rules:
-   - EXACTLY 2 bullets per question — never 1 never 3
-   - Every bullet must start with a bold label of 1 to 3 words
-   - Label must be extracted from the answer content itself
-   - Description after colon must be 2 to 3 lines long
-   - Content must be strictly from user answer — no random additions
-   - Do not repeat same point in different bullets
+Bold and underline rules:
+- Every bullet label MUST be bold using ** **
+- Additional bold using ** **: key terms, product names, policy names,
+  role names, important numbers, feature names
+- Underline using __ __: warnings, legal requirements, mandatory items
+- Do not bold or underline every word in description
 
-6. Sub-heading rules:
-   - Extract the core topic words from the question
-   - Example: "What is the review process?" → **Review Process**
-   - Example: "Who are the reviewers?" → **Reviewers**
-   - Example: "How is feedback tracked?" → **Feedback Tracking**
-   - Sub-heading MUST be bold using ** ** on both sides
-   - No colon after sub-heading
-   - One blank line before each sub-heading
-
-7. Never include:
-   - The words "Purpose:" or "Overview:" as bullet labels
-   - Generic filler content not from user answers
-   - Questions in the output
-   - Markdown headers using ## or #
-   - Any preamble or introduction before content
-   - Any conclusion or summary after content
-   - More than 2 bullets per question
-   - More than 3 lines per bullet point
+Do not include:
+- Generic labels like "Definition:" or "Purpose:" or "Objective:"
+- Questions in the output
+- Markdown headers using ##
+- Any preamble or explanation before the content
+- Any closing remarks after the content
 
 Example of correct output:
+- **Cost Control:** Establish clear spending boundaries ensuring all
+  employee expenses align with company budget guidelines
+- **Transparency:** Create a fair and consistent framework for expense
+  reporting and reimbursement across all departments
+- **Compliance:** Ensure all business expenses meet Indian financial
+  regulations and statutory tax requirements
 
-**Review Process**
-- **RFC Submission:** Architect submits formal Request for Comments
-  document to engineering leadership team for structured review
-  before any significant architectural changes are implemented
-- **Review Period:** Minimum 5 working day review period allowing all
-  stakeholders to provide written feedback on the proposed changes
-  ensuring comprehensive evaluation before final decision
-
-**Reviewers**
-- **CTO:** Reviews overall strategic alignment, scalability approach
-  and technology stack decisions ensuring alignment with company
-  vision and long term technical roadmap
-- **Tech Leads:** Evaluate technical feasibility, implementation
-  complexity and team capability requirements for proposed changes
-  providing detailed feedback from engineering perspective
-
-**Feedback Tracking**
-- **GitHub Discussions:** All architecture feedback recorded as GitHub
-  discussions on RFC pull request maintaining full audit trail
-  of all comments and decisions made during review process
-- **Decision Log:** Significant decisions and rejected alternatives
-  documented in Architecture Decision Records for future reference
-  and organizational knowledge preservation
-
-Generate the section content now following exact format above:
+Generate the section content now:
 """
 )
 
@@ -165,27 +144,19 @@ def generate_section(data: GenerateSectionRequest):
             raise HTTPException(status_code=404, detail="Section not found")
         section_title = result[0]
 
-        # Build answers text question by question
+        # Handle empty answers gracefully
         if data.answers and len(data.answers) > 0:
-            qa_parts = []
-            for i, a in enumerate(data.answers, 1):
-                answer_text = a.answer.strip() if a.answer else ""
-                if answer_text:
-                    qa_parts.append(
-                        f"Question {i}: {a.question}\n"
-                        f"Answer {i}: {answer_text}"
-                    )
-                else:
-                    qa_parts.append(
-                        f"Question {i}: {a.question}\n"
-                        f"Answer {i}: No answer provided"
-                    )
-            answers_text = "\n\n".join(qa_parts)
-        else:
-            answers_text = (
-                f"No answers provided. "
-                f"Generate professional content for: {section_title}"
+            answers_text = "\n".join(
+                [
+                    f"{a.question}: {a.answer}"
+                    for a in data.answers
+                    if a.answer and a.answer.strip()
+                ]
             )
+            if not answers_text.strip():
+                answers_text = "No answers provided. Generate professional content based on section title."
+        else:
+            answers_text = "No answers provided. Generate professional content based on section title."
 
         memory       = get_memory(data.document_id)
         chat_history = ""
